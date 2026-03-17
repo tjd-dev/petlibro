@@ -35,6 +35,9 @@ from .devices.feeders.polar_wet_food_feeder import PolarWetFoodFeeder
 from .devices.feeders.space_smart_feeder import SpaceSmartFeeder
 from .devices.fountains.dockstream_smart_fountain import DockstreamSmartFountain
 from .devices.fountains.dockstream_smart_rfid_fountain import DockstreamSmartRFIDFountain
+from .devices.fountains.dockstream_2_smart_cordless_fountain import Dockstream2SmartCordlessFountain
+from .devices.fountains.dockstream_2_smart_fountain import Dockstream2SmartFountain
+from .devices.litterboxes.luma_smart_litter_box import LumaSmartLitterBox
 from .entity import PetLibroEntity, _DeviceT, PetLibroEntityDescription
 
 @dataclass(frozen=True)
@@ -69,6 +72,7 @@ class PetLibroTextEntity(PetLibroEntity[_DeviceT], TextEntity):
             self.async_write_ha_state()
         except Exception as e:
             _LOGGER.error(f"Error setting value {native_value} for {self.device.name}: {e}")
+
 DEVICE_TEXT_MAP: dict[type[Device], list[PetLibroTextEntityDescription]] = {
     Feeder: [
     ],
@@ -97,6 +101,12 @@ DEVICE_TEXT_MAP: dict[type[Device], list[PetLibroTextEntityDescription]] = {
     DockstreamSmartFountain: [
     ],
     DockstreamSmartRFIDFountain: [
+    ],
+    Dockstream2SmartFountain: [
+    ],
+    Dockstream2SmartCordlessFountain: [
+    ],
+    LumaSmartLitterBox: [
     ],
 }
 

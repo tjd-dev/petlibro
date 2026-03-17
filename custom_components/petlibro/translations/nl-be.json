@@ -25,14 +25,83 @@
             }
         }
     },
+    "options": {
+        "abort": {
+            "no_member_data": "Lidgegevens niet geladen, controleer de logboeken",
+            "account_settings_abort": "{account_settings_abort}",
+            "integration_settings_abort": "{integration_settings_abort}",
+            "no_settings_changed": "Er zijn geen instellingen gewijzigd",
+            "error_check_logs": "Fout, controleer de logboeken"
+        },
+        "error": {
+            "unknown": "Onverwachte fout"
+        },
+        "step": {
+			"init": {
+                "menu_options": {
+                    "integration_settings": "Integratie-instellingen",
+                    "account_settings": "Accountinstellingen"
+                }
+			},
+            "integration_settings": {
+                "title": "Integratie-instellingen",
+                "data": {
+                    "manual_feed_portions": "Handmatige voerhoeveelheid instellen per portie"
+                },
+                "data_description": {
+                    "manual_feed_portions": "Standaard: ingesteld volgens de gekozen eenheid voor dierenvoer ({uom})."
+                }
+            },
+            "account_settings": {
+                "title": "Accountinstellingen",
+                "description": "Voor account: {email}",
+                "data": {
+                    "nickname": "Bijnaam",
+                    "gender": "Geslacht"
+                },
+                "sections": {
+                    "measurement_unit": {
+                        "name": "Meeteenheden",
+                        "data": {
+                            "feedUnitType": "Voederautomaat/Voeren",
+                            "waterUnitType": "Fontein/Drinken",
+                            "weightUnitType": "Gewicht",
+                            "update_all_units": "Werk de meeteenheid van alle Petlibro-eenheidssensor-entiteiten bij"
+                        },
+                        "data_description": {
+                            "feedUnitType": "Let op: 'kopjes' worden niet ondersteund voor sensor-entiteiten.",
+                            "update_all_units": "Standaard werkt een wijziging van een eenheid hier alleen sensoren van dat type bij."
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "common": {
+        "reloading_integration": "De integratie wordt binnenkort opnieuw geladen",
+        "settings_updated": "Instellingen bijgewerkt",
+        "no_settings_changed": "Er zijn geen instellingen gewijzigd",
+        "sensors_updated": "Sensor-entiteiten bijgewerkt",
+        "account_updated": "Account succesvol bijgewerkt"
+    },
+    "selector": {
+        "member_gender": {
+            "options": {
+                "male": "Man",
+                "female": "Vrouw",
+                "none": "Geen voorkeur"
+            }
+        },
+        "pet_sex": {
+            "options": {
+                "male": "Mannetje",
+                "female": "Vrouwtje",
+                "none": "Geen geselecteerd"
+            }
+        }
+    },
     "entity": {
         "sensor": {
-            "device_sn": {
-                "name": "Serienummer"
-            },
-            "mac_address": {
-                "name": "MAC Address"
-            },
             "wifi_ssid": {
                 "name": "Wi-Fi SSID"
             },
@@ -48,8 +117,26 @@
             "electric_quantity": {
                 "name": "Batterij %"
             },
-            "today_feeding_quantity": {
-                "name": "Totale Voedingshoeveelheid van vandaag"
+            "today_feeding_quantity_weight": {
+                "name": "Vandaag gevoerde hoeveelheid (Gewicht)"
+            },
+            "today_feeding_quantity_volume": {
+                "name": "Vandaag gevoerde hoeveelheid (Volume)"
+            },
+            "last_feed_quantity_weight": {
+                "name": "Laatste gevoerde hoeveelheid (Gewicht)"
+            },
+            "last_feed_quantity_volume": {
+                "name": "Laatste gevoerde hoeveelheid (Volume)"
+            },
+            "next_feed_time": {
+                "name": "Volgende voedertijd"
+            },
+            "next_feed_quantity_weight": {
+                "name": "Volgende voederhoeveelheid (Gewicht)"
+            },
+            "next_feed_quantity_volume": {
+                "name": "Volgende voederhoeveelheid (Volume)"
             },
             "today_feeding_times": {
                 "name": "Totale voedermomenten van vandaag"
@@ -63,13 +150,16 @@
             "feeding_plan_state": {
                 "name": "Voedingsplan van vandaag"
             },
-            "today_total_ml": {
+            "today_drinking_amount": {
                 "name": "Waterverbruik vandaag (ml)"
             },
             "weight": {
                 "name": "Huidig ​​gewicht"
             },
             "weight_percent": {
+                "name": "Resterend water (%)"
+            },
+            "remaining_water": {
                 "name": "Resterend water"
             },
             "use_water_interval": {
@@ -217,6 +307,9 @@
             },
             "lid_close_time": {
                 "name": "Sluittijd deksel"
+            },
+            "manual_feed_quantity": {
+                "name": "Handmatige voederhoeveelheid"
             }
         },
         "select": {
@@ -228,6 +321,9 @@
             },
             "display_icon": {
                 "name": "Symbol op het scherm"
+            },
+            "manual_feed_quantity_cups": {
+                "name": "Handmatige voederhoeveelheid"
             }
         },
         "text": {

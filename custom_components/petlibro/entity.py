@@ -5,13 +5,13 @@ from __future__ import annotations
 from typing import Generic, TypeVar
 from functools import cached_property
 
-from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.device_registry import CONNECTION_NETWORK_MAC, DeviceInfo
 from homeassistant.helpers.entity import EntityDescription
 from homeassistant.helpers.update_coordinator import CoordinatorEntity, DataUpdateCoordinator
 
 from .devices import Device
 from .devices.event import EVENT_UPDATE
-from .const import DOMAIN
+from .const import DOMAIN, APIKey
 from .hub import PetLibroHub
 
 _DeviceT = TypeVar("_DeviceT", bound=Device)
@@ -31,7 +31,9 @@ class PetLibroEntity(
         super().__init__(hub.coordinator)
         self.device = device
         self.hub = hub
+        self.member = hub.member
         self.entity_description = description
+        self.key = description.key
         self._attr_unique_id = f"{self.device.serial}-{description.key}"
 
     @cached_property
@@ -40,11 +42,13 @@ class PetLibroEntity(
         assert self.device.serial
         return DeviceInfo(
             identifiers={(DOMAIN, self.device.serial)},
+            connections={(CONNECTION_NETWORK_MAC, self.device.mac)},
             manufacturer="PETLIBRO",
             model=self.device.model,
             name=self.device.name,
             sw_version=self.device.software_version,
-            hw_version=self.device.hardware_version
+            hw_version=self.device.hardware_version,
+            serial_number=self.device.serial,
         )
 
     async def async_added_to_hass(self) -> None:

@@ -1,10 +1,12 @@
+import ast
+from zoneinfo import ZoneInfo
 import aiohttp
 
 from typing import cast
 from logging import getLogger
 from ...exceptions import PetLibroAPIError
 from ..device import Device
-from datetime import datetime
+from datetime import datetime, timedelta, time
 from homeassistant.util import dt as dt_util
 
 _LOGGER = getLogger(__name__)
@@ -28,6 +30,8 @@ class SpaceSmartFeeder(Device):  # Inherit directly from Device
             get_feeding_plan_today = await self.api.device_feeding_plan_today_new(self.serial)
             get_work_record = await self.api.get_device_work_record(self.serial)
             get_device_events = await self.api.device_events(self.serial)
+            feeding_plan_list = (await self.api.device_feeding_plan_list(self.serial)
+                if self._data.get("enableFeedingPlan") else [])
     
             # Update internal data with fetched API data
             self.update_data({
@@ -35,6 +39,7 @@ class SpaceSmartFeeder(Device):  # Inherit directly from Device
                 "realInfo": real_info or {},
                 "getAttributeSetting": attribute_settings or {},
                 "getfeedingplantoday": get_feeding_plan_today or {},
+                "feedingPlan": feeding_plan_list or [],
                 "getDeviceEvents": get_device_events or {},
                 "getUpgrade": get_upgrade or {},
                 "workRecord": get_work_record if get_work_record is not None else []
@@ -52,12 +57,14 @@ class SpaceSmartFeeder(Device):  # Inherit directly from Device
         return self._data.get("grainStatus", {}).get("todayFeedingQuantities", [])
 
     @property
-    def today_feeding_quantity(self) -> int:
-        return self._data.get("grainStatus", {}).get("todayFeedingQuantity", 0)
+    def today_feeding_quantity(self) -> float:
+        quantity = self._data.get("grainStatus", {}).get("todayFeedingQuantity")
+        return quantity if isinstance(quantity, (int, float)) else 0
 
     @property
     def today_feeding_times(self) -> int:
-        return self._data.get("grainStatus", {}).get("todayFeedingTimes", 0)
+        times = self._data.get("grainStatus", {}).get("todayFeedingTimes")
+        return times if isinstance(times, int) else 0
 
     @property
     def feeding_plan_state(self) -> bool:
@@ -125,11 +132,13 @@ class SpaceSmartFeeder(Device):  # Inherit directly from Device
 
     @property
     def wifi_rssi(self) -> int:
-        return self._data.get("realInfo", {}).get("wifiRssi", -100)
+        wifi_rssi = self._data.get("realInfo", {}).get("wifiRssi")
+        return wifi_rssi if isinstance(wifi_rssi, int) else -100
 
     @property
-    def electric_quantity(self) -> int:
-        return self._data.get("realInfo", {}).get("electricQuantity", 0)
+    def electric_quantity(self) -> float:
+        quantity = self._data.get("realInfo", {}).get("electricQuantity")
+        return quantity if isinstance(quantity, (float, int)) else 0
 
     @property
     def enable_feeding_plan(self) -> bool:
@@ -166,7 +175,8 @@ class SpaceSmartFeeder(Device):  # Inherit directly from Device
 
     @property
     def close_door_time_sec(self) -> int:
-        return self._data.get("realInfo", {}).get("closeDoorTimeSec", 0)
+        time_sec = self._data.get("realInfo", {}).get("closeDoorTimeSec")
+        return time_sec if isinstance(time_sec, int) else 0
 
     @property
     def screen_display_switch(self) -> bool:
@@ -222,7 +232,7 @@ class SpaceSmartFeeder(Device):  # Inherit directly from Device
         return None
 
     @property
-    def last_feed_quantity(self) -> int | None:
+    def last_feed_quantity(self) -> int:
         """Return the last feed amount in raw grain count."""
         raw = self._data.get("workRecord", [])
         if not raw or not isinstance(raw, list):
@@ -232,12 +242,94 @@ class SpaceSmartFeeder(Device):  # Inherit directly from Device
             for record in day_entry.get("workRecords", []):
                 _LOGGER.debug("Evaluating record type: %s", record.get("type"))
                 if record.get("type") == "GRAIN_OUTPUT_SUCCESS":
-                    return record.get("actualGrainNum") or 0
+                    actualGrainNum = record.get("actualGrainNum")
+                    return actualGrainNum if isinstance(actualGrainNum, int) else 0
         return 0
 
     @property
-    def feeding_plan_today_data(self) -> str:
+    def feeding_plan_today_data(self) -> dict:
         return self._data.get("getfeedingplantoday", {})
+
+    @property
+    def feeding_plan_data(self) -> dict:
+        """Return the feeding plan data dictionary."""
+        return {
+            str(plan["id"]): plan
+            for plan in self._data.get("feedingPlan", [])
+            if isinstance(plan, dict) and "id" in plan
+        } or {}
+    
+    @property
+    def get_next_feed(self) -> dict:
+        """Get the next scheduled feeding plan.
+
+        :Returns:
+            {
+                "id": int,
+                "utc_time": datetime,
+            }
+        """
+        now_utc = dt_util.now(dt_util.UTC)
+        next_feed = {}
+        
+        for feed in self.feeding_plan_data.values():
+            feed: dict
+            
+            if not (feed.get("id") and feed.get("enable") and ":" in feed.get("executionTime", "")):
+                continue
+                
+            timezone = ZoneInfo(feed.get("timezone", "UTC"))
+            repeat_days = ast.literal_eval(feed.get("repeatDay", ""))
+            now_local = now_utc.astimezone(timezone)
+            hour, minute = map(int, feed["executionTime"].split(":"))
+            
+            if not repeat_days:
+                plan_dt_local = datetime.combine(now_local.date(), time(hour, minute), timezone)
+                if plan_dt_local > now_local:
+                    candidate_dt_local = plan_dt_local # today
+                else:
+                    candidate_dt_local = plan_dt_local + timedelta(days=1) # tomorrow
+            else:
+                for i in range(8): # 0-7 days ahead
+                    day_dt_local = now_local + timedelta(days=i)
+                    if day_dt_local.isoweekday() not in repeat_days:
+                        continue
+
+                    plan_dt_local = datetime.combine(day_dt_local.date(), time(hour, minute), timezone)
+                    if plan_dt_local > now_local:
+                        candidate_dt_local = plan_dt_local
+                        break
+                    
+            if candidate_dt_local:
+                candidate_dt_utc = candidate_dt_local.astimezone(dt_util.UTC)
+                if not next_feed or candidate_dt_utc < next_feed["utc_time"]:
+                    next_feed = {
+                        "id": feed["id"],
+                        "utc_time": candidate_dt_utc,
+                    }
+        return next_feed
+
+    @property
+    def next_feed_time(self) -> datetime | None:
+        """Return the next scheduled feed time as a datetime object (UTC)."""
+        _LOGGER.debug("next_feed_time called for device: %s", self.serial)
+        
+        next_feed = self.get_next_feed.copy()
+        if next_feed and (utc_time := next_feed.get("utc_time")):
+            _LOGGER.debug("Returning datetime object: %s", utc_time.isoformat())
+            return utc_time
+        return None
+
+    @property
+    def next_feed_quantity(self) -> int:
+        """Return the next scheduled feed amount."""
+        next_feed = self.get_next_feed.copy()
+        if next_feed and (plan_id := next_feed.get("id")):
+            feeding_plan = self.feeding_plan_data.get(str(plan_id), {})
+            if feeding_plan:
+                grainNum = feeding_plan.get("grainNum")
+                return grainNum if isinstance(grainNum, int) else 0
+        return 0
 
     @property
     def manual_feed_quantity(self):
@@ -315,8 +407,7 @@ class SpaceSmartFeeder(Device):  # Inherit directly from Device
     async def set_manual_feed_quantity(self, value: float):
         """Set the manual feed quantity with a default value handling"""
         _LOGGER.debug(f"Setting manual feed quantity: serial={self.serial}, value={value}")
-        self.manual_feed_quantity = max(1, min(value, 12))  # Ensure value is within valid range
-        await self.refresh()
+        self.manual_feed_quantity = max(1, min(value, self.max_feed_portions))  # Ensure value is within valid range
 
     # Method for manual feeding
     async def set_manual_feed(self) -> None:
